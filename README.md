@@ -1,4 +1,4 @@
-# ozd-arena
+## ozd-arena
 Simple, non-chained linear memory allocator (arena) implementation.
 
 ## Integration
