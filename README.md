@@ -6,6 +6,10 @@ This header is designed for single translation units.
 You must include `ozd-arena.hpp` in exactly one implementation file (e.g., `main.cpp`).
 Including it in multiple `.cpp` files will duplicate static state and break the implementation.
 
+## Platform
+* Windows
+* Linux
+
 ## Usage
 ```cpp
 #include "ozd-arena.hpp"

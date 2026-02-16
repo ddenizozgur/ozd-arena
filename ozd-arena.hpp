@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- * This header is designed for single compilation unit.
+ * This header is designed for single translation units.
  */
 
 #if defined(__clang__)
