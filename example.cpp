@@ -11,7 +11,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
     if (bytes < 0) {    // bytes == 0: "" is valid string in c
         assert(false && "vsnprintf(): failed");
         va_end(copy_args);
-        return {};
+        return nullptr;
     }
 
     auto arena_state = ozd::temp_arena_begin(arena);
@@ -20,7 +20,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
     char *ptr = ozd::arena_push<char>(arena, needed_bytes);
     if (ptr == nullptr) {
         va_end(copy_args);
-        return {};
+        return nullptr;
     }
 
     int len = vsnprintf(ptr, needed_bytes, fmt, copy_args);
@@ -30,7 +30,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
         ozd::temp_arena_end(arena_state);
 
         assert(false && "vsnprintf(): failed");
-        return {};
+        return nullptr;
     }
 
     return ptr;
