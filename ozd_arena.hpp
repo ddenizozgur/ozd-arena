@@ -89,7 +89,6 @@ inline const SYSTEM_INFO *_win32_get_sysinfo() {
 
 #include <sys/mman.h>
 #include <unistd.h>
-#include <time.h>
 
 #endif  // OZD_OS_
 
