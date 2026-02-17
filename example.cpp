@@ -1,4 +1,4 @@
-#include "ozd-arena.hpp"
+#include "ozd_arena.hpp"
 
 #include <cstdio>
 #include <cstdarg>
@@ -14,7 +14,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
         return nullptr;
     }
 
-    auto arena_state = ozd::temp_arena_begin(arena);
+    auto arena_state = ozd::arena_temp_begin(arena);
 
     size_t needed_bytes = bytes + 1ull;
     char *ptr = ozd::arena_push<char>(arena, needed_bytes);
@@ -27,7 +27,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
     va_end(copy_args);
 
     if (len < 0) {
-        ozd::temp_arena_end(arena_state);
+        ozd::arena_temp_end(arena_state);
 
         assert(false && "vsnprintf(): failed");
         return nullptr;
@@ -44,8 +44,8 @@ const char *cstr_fmt(ozd::Arena *arena, const char *fmt, ...) {
     return res;
 }
 
-void tprint_fmt(const char *fmt, ...) {
-    ozd::Temp_Arena scratch = ozd::scratch_begin();
+void tprintln_fmt(const char *fmt, ...) {
+    ozd::Arena_Temp scratch = ozd::scratch_begin();
 
     va_list args;
     va_start(args, fmt);
@@ -58,14 +58,16 @@ void tprint_fmt(const char *fmt, ...) {
 }
 
 int main() {
-    ozd::Arena arena = ozd::arena_init_ex(ozd::GiB(1), ozd::KiB(16));
+    // ozd::Arena arena = ozd::arena_init_ex(ozd::MiB(128), ozd::KiB(8));
+    ozd::Arena arena = ozd::arena_init();
 
-    const char *cstr = cstr_fmt(&arena, "This is a test: %d\n", 46);
+    const char *cstr = cstr_fmt(&arena, "This is a test: \t%d", 46);
     puts(cstr);
 
     ozd::arena_free(&arena);
 
-    tprint_fmt("This is a test 2: %s\n", "testinator");
+    tprintln_fmt("This is a test 2: \t%s", "testinator");
 
+    ozd::scratches_free();
     return 0;
 }

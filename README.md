@@ -7,8 +7,9 @@ You must include `ozd-arena.hpp` in exactly one implementation file (e.g., `main
 Including it in multiple `.cpp` files will duplicate static state and break the implementation.
 
 ## Platform
-* Windows
-* Linux
+* Only x86-64
+  * Windows
+  * Linux
 
 ## Usage
 ```cpp
@@ -28,7 +29,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
         return nullptr;
     }
 
-    auto arena_state = ozd::temp_arena_begin(arena);
+    auto arena_state = ozd::arena_temp_begin(arena);
 
     size_t needed_bytes = bytes + 1ull;
     char *ptr = ozd::arena_push<char>(arena, needed_bytes);
@@ -41,7 +42,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
     va_end(copy_args);
 
     if (len < 0) {
-        ozd::temp_arena_end(arena_state);
+        ozd::arena_temp_end(arena_state);
 
         assert(false && "vsnprintf(): failed");
         return nullptr;
@@ -59,7 +60,7 @@ const char *cstr_fmt(ozd::Arena *arena, const char *fmt, ...) {
 }
 
 void tprint_fmt(const char *fmt, ...) {
-    ozd::Temp_Arena scratch = ozd::scratch_begin();
+    ozd::Arena_Temp scratch = ozd::scratch_begin();
 
     va_list args;
     va_start(args, fmt);
@@ -81,5 +82,6 @@ int main() {
 
     tprint_fmt("This is a test 2: %s\n", "testinator");
 
+    ozd::scratches_free();
     return 0;
 }
