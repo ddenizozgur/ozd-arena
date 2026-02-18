@@ -5,25 +5,25 @@
  */
 
 #if defined(__clang__)
-#define OZD_COMPILER_CLANG  1
+#define _DEFS_COMPILER_CLANG    1
 #elif defined(_MSC_VER)
-#define OZD_COMPILER_MSVC   1
+#define _DEFS_COMPILER_MSVC     1
 #elif defined(__GNUC__)
-#define OZD_COMPILER_GCC    1
+#define _DEFS_COMPILER_GCC      1
 #else
 #error compiler not supported yet!
 #endif
 
 #if defined(_WIN32)
-#define OZD_OS_WINDOWS      1
+#define _DEFS_OS_WINDOWS        1
 #elif defined(__linux__) // __gnu_linux__ just defined in kernel or smth...
-#define OZD_OS_LINUX        1
+#define _DEFS_OS_LINUX          1
 #else
 #error os not supported yet!
 #endif
 
 #if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-#define OZD_ARCH_X64        1
+#define _DEFS_ARCH_X64          1
 #else
 #error arch not supported yet!
 #endif
@@ -32,37 +32,37 @@
  *
  */
 
-#if OZD_COMPILER_MSVC
-#define OZD_FORCE_INLINE    static __forceinline
-#define OZD_NO_INLINE       static __declspec(noinline)
-#elif OZD_COMPILER_GCC || OZD_COMPILER_CLANG
-#define OZD_FORCE_INLINE    static inline __attribute__((always_inline))
-#define OZD_NO_INLINE       static __attribute__((noinline))
+#if _DEFS_COMPILER_MSVC
+#define _DEFS_FORCE_INLINE  static __forceinline
+#define _DEFS_NO_INLINE     static __declspec(noinline)
+#elif _DEFS_COMPILER_GCC || _DEFS_COMPILER_CLANG
+#define _DEFS_FORCE_INLINE  static inline __attribute__((always_inline))
+#define _DEFS_NO_INLINE     static __attribute__((noinline))
 #endif
 
 #define _GlueStep0(x, y)    x##y
-#define Ozd_Glue(x, y)      _GlueStep0(x, y)
+#define _Glue(x, y)         _GlueStep0(x, y)
 
 // thread safe
-#define _DoOnceStep0(x)     Ozd_Glue(x, __COUNTER__)
-#define Ozd_DoOnce(code)    static const char _DoOnceStep0(_do_once_) = [&](){ code; return 0; }()
+#define _DoOnceStep0(x)     _Glue(x, __COUNTER__)
+#define _DoOnce(code)       static const char _DoOnceStep0(_do_once_) = [&](){ code; return 0; }()
 
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
 
-template <typename T> constexpr OZD_FORCE_INLINE T _Min(T x, T y) { return (x < y ? x : y); }
-template <typename T> constexpr OZD_FORCE_INLINE T _Max(T x, T y) { return (x > y ? x : y); }
+template <typename T> constexpr _DEFS_FORCE_INLINE T _Min(T x, T y) { return (x < y ? x : y); }
+template <typename T> constexpr _DEFS_FORCE_INLINE T _Max(T x, T y) { return (x > y ? x : y); }
 
-constexpr OZD_FORCE_INLINE bool _IsPow2(uint64_t x)       { return (x != 0 && (x & (x - 1)) == 0); }
-constexpr OZD_FORCE_INLINE bool _IsPow2OrZero(uint64_t x) { return (((x - 1) & x) == 0); }
-constexpr OZD_FORCE_INLINE uint64_t _AlignUpPow2(uint64_t n, uint64_t align) { return ((n + (align - 1)) & ~(align - 1)); }
+constexpr _DEFS_FORCE_INLINE bool _IsPow2(uint64_t x)       { return (x != 0 && (x & (x - 1)) == 0); }
+constexpr _DEFS_FORCE_INLINE bool _IsPow2OrZero(uint64_t x) { return (((x - 1) & x) == 0); }
+constexpr _DEFS_FORCE_INLINE uint64_t _AlignUpPow2(uint64_t n, uint64_t align) { return ((n + (align - 1)) & ~(align - 1)); }
 
 namespace ozd {
 
-constexpr OZD_FORCE_INLINE uint64_t KiB(uint64_t x) { return (x << 10ull); }
-constexpr OZD_FORCE_INLINE uint64_t MiB(uint64_t x) { return (x << 20ull); }
-constexpr OZD_FORCE_INLINE uint64_t GiB(uint64_t x) { return (x << 30ull); }
+constexpr _DEFS_FORCE_INLINE uint64_t KiB(uint64_t x) { return (x << 10ull); }
+constexpr _DEFS_FORCE_INLINE uint64_t MiB(uint64_t x) { return (x << 20ull); }
+constexpr _DEFS_FORCE_INLINE uint64_t GiB(uint64_t x) { return (x << 30ull); }
 
 }
 
@@ -70,52 +70,52 @@ constexpr OZD_FORCE_INLINE uint64_t GiB(uint64_t x) { return (x << 30ull); }
  *
  */
 
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
 inline const SYSTEM_INFO *_win32_get_sysinfo() {
     static SYSTEM_INFO sysinfo = {};
-#if OZD_ARCH_X64
+#if _DEFS_ARCH_X64
     // we want our virtual address space big
-    Ozd_DoOnce( GetSystemInfo(&sysinfo); );
+    _DoOnce( GetSystemInfo(&sysinfo); );
 #endif
-    // Ozd_DoOnce( GetNativeSystemInfo(&sysinfo); );
+    // _DoOnce( GetNativeSystemInfo(&sysinfo); );
     return &sysinfo;
 }
 
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
 
 #include <sys/mman.h>
 #include <unistd.h>
 
-#endif  // OZD_OS_
+#endif  // _DEFS_OS_
 
 inline void _os_abort(int code) {
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     ExitProcess(code);
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     exit(code);
 #endif
 }
 
 static size_t _os_get_pagesize() {
     static size_t res = 0;
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     res = _win32_get_sysinfo()->dwPageSize;
-#elif OZD_OS_LINUX
-    Ozd_DoOnce( res = sysconf(_SC_PAGESIZE); );
+#elif _DEFS_OS_LINUX
+    _DoOnce( res = sysconf(_SC_PAGESIZE); );
 #endif
     return res;
 }
 
 inline void *_os_virtual_reserve(size_t size) {
     void *ptr = nullptr;
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
     assert(ptr != nullptr && "VirtualAlloc(): reserve failed");
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == MAP_FAILED) {    // FATAL error
         assert(false && "mmap(): reserve failed");
@@ -126,13 +126,13 @@ inline void *_os_virtual_reserve(size_t size) {
 };
 
 inline void _os_virtual_commit(void *ptr, size_t size) {
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     void *temp = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
     if (temp == nullptr) { // FATAL error
         assert(false && "VirtualAlloc(): commit failed");
         _os_abort(1);
     }
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     int res = mprotect(ptr, size, PROT_READ | PROT_WRITE);
     if (res == -1) { // FATAL error
         assert(false && "mprotect(): commit failed");
@@ -142,23 +142,20 @@ inline void _os_virtual_commit(void *ptr, size_t size) {
 }
 
 inline void _os_virtual_decommit(void *ptr, size_t size) {
-    assert(false && "TODO: check impl");
-    return;
-
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     VirtualFree(ptr, size, MEM_DECOMMIT);
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     mprotect(ptr, size, PROT_NONE); // order matters
     madvise(ptr, size, MADV_DONTNEED);
 #endif
 }
 
 inline void _os_virtual_release(void *ptr, size_t size) {
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     (void)size;
     if (!VirtualFree(ptr, 0, MEM_RELEASE))
         assert(false && "VirtualFree(): release failed");
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     munmap(ptr, size);
 #endif
 }
@@ -182,11 +179,11 @@ struct Arena {
 static Arena arena_init_ex(size_t reserve_size, size_t per_commit_size) {
     size_t pagesize = _os_get_pagesize();
 
-#if OZD_OS_WINDOWS
+#if _DEFS_OS_WINDOWS
     // reserving less than 64KiB on windows is waste,
     // ptr must be align with dwAllocationGranularity
     reserve_size = _AlignUpPow2(reserve_size, _win32_get_sysinfo()->dwAllocationGranularity);
-#elif OZD_OS_LINUX
+#elif _DEFS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
     reserve_size = _AlignUpPow2(reserve_size, pagesize);
 #endif
@@ -209,7 +206,7 @@ inline Arena arena_init() {
     return arena_init_ex(ARENA_DEFAULT_RESERVE_SIZE, per_commit_size);
 }
 
-OZD_FORCE_INLINE size_t arena_get_pos(const Arena *arena) {
+_DEFS_FORCE_INLINE size_t arena_get_pos(const Arena *arena) {
     // unaligned !!!
     return arena->pos;
 }
@@ -261,11 +258,11 @@ inline void arena_free(Arena *arena) {
 }
 
 template <typename T>
-OZD_FORCE_INLINE T *arena_push(Arena *arena, size_t count = 1) {
+_DEFS_FORCE_INLINE T *arena_push(Arena *arena, size_t count = 1) {
     return (T *)arena_push_ex(arena, sizeof(T) * count, alignof(T));
 }
 template <typename T>
-OZD_FORCE_INLINE void arena_pop(Arena *arena, size_t count = 1) {
+_DEFS_FORCE_INLINE void arena_pop(Arena *arena, size_t count = 1) {
     arena_pop_by(arena, sizeof(T) * count);
 }
 
@@ -282,8 +279,8 @@ struct Arena_Temp {
     size_t pos = 0;
 };
 
-OZD_FORCE_INLINE Arena_Temp arena_temp_begin(Arena *arena)  { return { arena, arena_get_pos(arena) }; }
-OZD_FORCE_INLINE void arena_temp_end(Arena_Temp temp)       { arena_pop_to(temp.arena, temp.pos); }
+_DEFS_FORCE_INLINE Arena_Temp arena_temp_begin(Arena *arena)  { return { arena, arena_get_pos(arena) }; }
+_DEFS_FORCE_INLINE void arena_temp_end(Arena_Temp temp)       { arena_pop_to(temp.arena, temp.pos); }
 
 constexpr size_t PER_THREAD_SCRATCH_COUNT = 2;
 
@@ -340,7 +337,7 @@ inline Arena_Temp scratch_begin(ArgV ...argv) {
 
     return arena_temp_begin(scratch);
 }
-OZD_FORCE_INLINE void scratch_end(Arena_Temp scratch) {
+_DEFS_FORCE_INLINE void scratch_end(Arena_Temp scratch) {
     arena_temp_end(scratch);
 }
 inline void scratches_free() {
