@@ -76,13 +76,13 @@ constexpr _DEFS_FORCE_INLINE uint64_t GiB(uint64_t x) { return (x << 30ull); }
 #include <Windows.h>
 
 inline const SYSTEM_INFO *_win32_get_sysinfo() {
-    static SYSTEM_INFO sysinfo = {};
+    static SYSTEM_INFO sysInfo = {};
 #if _DEFS_ARCH_X64
     // we want our virtual address space big
-    _DoOnce( GetSystemInfo(&sysinfo); );
+    _DoOnce( GetSystemInfo(&sysInfo); );
 #endif
-    // _DoOnce( GetNativeSystemInfo(&sysinfo); );
-    return &sysinfo;
+    // _DoOnce( GetNativeSystemInfo(&sysInfo); );
+    return &sysInfo;
 }
 
 #elif _DEFS_OS_LINUX
@@ -173,37 +173,37 @@ struct Arena {
     size_t pos = 0;
     size_t committed = 0;
     size_t reserved = 0;
-    size_t per_commit_size = 0;
+    size_t perCommitSize = 0;
 };
 
-static Arena arena_init_ex(size_t reserve_size, size_t per_commit_size) {
-    size_t pagesize = _os_get_pagesize();
+static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
+    size_t pageSize = _os_get_pagesize();
 
 #if _DEFS_OS_WINDOWS
     // reserving less than 64KiB on windows is waste,
     // ptr must be align with dwAllocationGranularity
-    reserve_size = _AlignUpPow2(reserve_size, _win32_get_sysinfo()->dwAllocationGranularity);
+    reserveSize = _AlignUpPow2(reserveSize, _win32_get_sysinfo()->dwAllocationGranularity);
 #elif _DEFS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
-    reserve_size = _AlignUpPow2(reserve_size, pagesize);
+    reserveSize = _AlignUpPow2(reserveSize, pageSize);
 #endif
 
     // align per_commit_size with pagesize
-    per_commit_size = _AlignUpPow2(per_commit_size, pagesize);
+    perCommitSize = _AlignUpPow2(perCommitSize, pageSize);
     // ptr is already aligned for us
-    void *ptr = _os_virtual_reserve(reserve_size);
+    void *ptr = _os_virtual_reserve(reserveSize);
     if (ptr == nullptr) return {};
 
     Arena res;
     res.ptr = ptr;
-    res.reserved = reserve_size;
-    res.per_commit_size = per_commit_size;
+    res.reserved = reserveSize;
+    res.perCommitSize = perCommitSize;
     return res;
 }
 
 inline Arena arena_init() {
-    size_t per_commit_size = _os_get_pagesize() * 2;    // TODO:???
-    return arena_init_ex(ARENA_DEFAULT_RESERVE_SIZE, per_commit_size);
+    size_t perCommitSize = _os_get_pagesize() * 2;    // TODO:???
+    return arena_init_ex(ARENA_DEFAULT_RESERVE_SIZE, perCommitSize);
 }
 
 _DEFS_FORCE_INLINE size_t arena_get_pos(const Arena *arena) {
@@ -215,31 +215,31 @@ static void *arena_push_ex(Arena *arena, size_t size, size_t align) {
     // windows always zeroes fresh commits
     assert(_IsPow2(align) && "alignment must be non-zero power of 2");
 
-    size_t last_pos = _AlignUpPow2(arena->pos, align);
-    size_t post_pos = last_pos + size;
+    size_t lastPos = _AlignUpPow2(arena->pos, align);
+    size_t postPos = lastPos + size;
 
     size_t reserved = arena->reserved;
-    if (post_pos > reserved) {
+    if (postPos > reserved) {
         assert(false && "reserved size exceeded");
         return nullptr;
     }
 
     size_t committed = arena->committed;
-    if (post_pos > committed) {
-        size_t needed = post_pos - committed;
-        size_t new_commit = _AlignUpPow2(needed, arena->per_commit_size);
+    if (postPos > committed) {
+        size_t needed = postPos - committed;
+        size_t newCommit = _AlignUpPow2(needed, arena->perCommitSize);
 
-        size_t max_commit = reserved - committed;
-        new_commit = _Min(new_commit, max_commit);
+        size_t maxCommit = reserved - committed;
+        newCommit = _Min(newCommit, maxCommit);
 
         void *ptr = (char *)arena->ptr + committed;
-        _os_virtual_commit(ptr, new_commit);
+        _os_virtual_commit(ptr, newCommit);
 
-        arena->committed += new_commit;
+        arena->committed += newCommit;
     }
 
-    void *res = (char *)arena->ptr + last_pos;
-    arena->pos = post_pos;
+    void *res = (char *)arena->ptr + lastPos;
+    arena->pos = postPos;
     return res;
 }
 
