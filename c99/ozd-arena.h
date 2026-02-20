@@ -79,12 +79,12 @@ static inline SYSTEM_INFO *_win32_get_sysinfo() {
     return &sysInfo;
 }
 
-#elif DEFS_OS_LINUX
+#elif _DEFS_OS_LINUX
 
 #include <sys/mman.h>
 #include <unistd.h>
 
-#endif  // DEFS_OS_
+#endif  // _DEFS_OS_
 
 static inline void _os_abort(int code) {
 #if _DEFS_OS_WINDOWS
@@ -183,7 +183,7 @@ static ozd_Arena ozd_arena_init_ex(size_t reserveSize, size_t perCommitSize) {
     reserveSize = _AlignUpPow2(reserveSize, _win32_get_sysinfo()->dwAllocationGranularity);
 #elif _DEFS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
-    reserveSize = _AlignUpPow2(reserveSize, pagesize);
+    reserveSize = _AlignUpPow2(reserveSize, pageSize);
 #endif
 
     // align per_commit_size with pagesize

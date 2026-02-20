@@ -29,7 +29,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
         return nullptr;
     }
 
-    auto arena_state = ozd::arena_temp_begin(arena);
+    auto arenaState = ozd::arena_temp_begin(arena);
 
     size_t neededBytes = bytes + 1ull;
     char *ptr = ozd::arena_push<char>(arena, neededBytes);
@@ -42,7 +42,7 @@ const char *cstr_fmtva(ozd::Arena *arena, const char *fmt, va_list args) {
     va_end(copyArgs);
 
     if (len < 0) {
-        ozd::arena_temp_end(arena_state);
+        ozd::arena_temp_end(arenaState);
 
         assert(false && "vsnprintf(): failed");
         return nullptr;
