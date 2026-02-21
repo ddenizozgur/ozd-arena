@@ -50,6 +50,7 @@
  *
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>

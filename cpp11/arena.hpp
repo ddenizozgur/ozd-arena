@@ -31,14 +31,15 @@
  *
  */
 
+#include <cstddef>
+#include <cassert>
+
 #define _GlueStep0(x, y)    x##y
 #define _Glue(x, y)         _GlueStep0(x, y)
 
 // thread safe
 #define _DoOnceStep0(x)     _Glue(x, __COUNTER__)
 #define _DoOnce(code)       static const char _DoOnceStep0(_do_once_) = [&](){ code; return 0; }()
-
-#include <cassert>
 
 static inline bool _is_pow2(size_t x)                       { return (x != 0) && ((x & (x - 1)) == 0); }
 static inline size_t _alignup_pow2(size_t n, size_t align)  { return (n + (align - 1)) & ~(align - 1); }
@@ -66,7 +67,7 @@ static inline SYSTEM_INFO *_win32_get_sysinfo() {
 #endif  // _DEFS_OS_
 
 static inline size_t _os_get_pagesize() {
-    size_t res = 0;
+    static size_t res = 0;
 #if _DEFS_OS_WINDOWS
     res = _win32_get_sysinfo()->dwPageSize;
 #elif _DEFS_OS_LINUX
