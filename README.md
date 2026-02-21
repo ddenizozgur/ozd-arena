@@ -10,6 +10,8 @@ Including it in multiple `.cpp` files will duplicate static state and break the 
 * x86-64
   * Windows
   * Linux
+* AArch64
+  * Linux
 
 ## Usage
 ```cpp
