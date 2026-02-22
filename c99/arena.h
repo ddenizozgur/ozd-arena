@@ -141,19 +141,6 @@ static bool _os_virtual_commit(void *ptr, size_t size) {
     return true;
 }
 
-static inline bool _os_virtual_decommit(void *ptr, size_t size) {
-#if _IS_OS_WINDOWS
-    if (!VirtualFree(ptr, size, MEM_DECOMMIT)) {
-        assert(false && "VirtualFree(): decommit failed");
-        return false;
-    }
-#elif _IS_OS_LINUX
-    mprotect(ptr, size, PROT_NONE);
-    madvise(ptr, size, MADV_DONTNEED);
-#endif
-    return true;
-}
-
 static inline bool _os_virtual_release(void *ptr, size_t size) {
 #if _IS_OS_WINDOWS
     (void)size;
@@ -325,8 +312,7 @@ static inline Arena_Temp _scratch_begin(const Arena *conflicts[], size_t count) 
     }
     return arena_temp_begin(scratch);
 }
-// null terminated array
-#define ScratchBegin(...)   _scratch_begin((const Arena *[]) { __VA_ARGS__ }, _ArrayLen(((const Arena *[]) { __VA_ARGS__ })))
+#define ScratchBegin(...)   _scratch_begin((const Arena *[]) { NULL, __VA_ARGS__ }, _ArrayLen(((const Arena *[]) { NULL, __VA_ARGS__ })))
 #define ScratchEnd(scratch) arena_temp_end(scratch)
 
 static inline void scratches_free() {
