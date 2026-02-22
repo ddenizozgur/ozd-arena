@@ -1,29 +1,29 @@
-#if !defined(_DEFS_ARENA_H)
-#define _DEFS_ARENA_H
+#if !defined(_ARENA_H)
+#define _ARENA_H
 
 #if defined(__clang__)
-#define _DEFS_COMPILER_CLANG    1
+#define _IS_COMPILER_CLANG  1
 #elif defined(_MSC_VER)
-#define _DEFS_COMPILER_MSVC     1
+#define _IS_COMPILER_MSVC   1
 #elif defined(__GNUC__)
-#define _DEFS_COMPILER_GCC      1
+#define _IS_COMPILER_GCC    1
 #else
 #error compiler not supported!
 #endif
 
 #if defined(_WIN32)
-#define _DEFS_OS_WINDOWS        1
+#define _IS_OS_WINDOWS      1
 #elif defined(__linux__) // __gnu_linux__ just defined in kernel or smth...
-#define _DEFS_OS_LINUX          1
+#define _IS_OS_LINUX        1
 #else
 #error os not supported!
 #endif
 
 #if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
-#define _DEFS_ARCH_X64          1
+#define _IS_ARCH_X64        1
 #elif defined(__aarch64__)
-    #if _DEFS_OS_LINUX
-    #define _DEFS_ARCH_ARM64    1
+    #if _IS_OS_LINUX
+    #define _IS_ARCH_ARM64  1
     #endif
 #error arch not supported!
 #endif
@@ -32,19 +32,32 @@
  *
  */
 
-#if _DEFS_COMPILER_MSVC
+#if _IS_COMPILER_MSVC
 #define _THREAD_LOCAL   __declspec(thread)
-#elif _DEFS_COMPILER_GCC || _DEFS_COMPILER_CLANG
+#elif _IS_COMPILER_GCC || _IS_COMPILER_CLANG
 #define _THREAD_LOCAL   __thread
 #endif
 
-#if _DEFS_COMPILER_MSVC
+#if _IS_COMPILER_MSVC
 #define _AlignOf(T) __alignof(T)
-#elif _DEFS_COMPILER_CLANG
+#elif _IS_COMPILER_CLANG
 #define _AlignOf(T) __alignof(T)
-#elif _DEFS_COMPILER_GCC
+#elif _IS_COMPILER_GCC
 #define _AlignOf(T) __alignof__(T)
 #endif
+
+#if _IS_COMPILER_MSVC
+#pragma section(".CRT$XCU", read)
+#define _Init(name)                         \
+    static void name(void);                 \
+    __declspec(allocate(".CRT$XCU"))        \
+    static void (*name##_Ptr)(void) = name; \
+    static void name(void)
+#elif _IS_COMPILER_GCC || _IS_COMPILER_CLANG
+#define _Init(name)                         \
+    __attribute__((constructor))            \
+    static void name(void)
+#endif  // IS_COMPILER_
 
 /*
  *
@@ -62,36 +75,36 @@ static inline size_t _alignup_pow2(size_t n, size_t align)  { return (n + (align
  *
  */
 
-#if _DEFS_OS_WINDOWS
+static size_t _pageSize = 0;
+
+#if _IS_OS_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-#elif _DEFS_OS_LINUX
+static SYSTEM_INFO _win32_sysInfo = { 0 };
+_Init(_win32_sysinfo_init) {
+    GetSystemInfo(&_win32_sysInfo);
+    _pageSize = _win32_sysInfo.dwPageSize;
+}
+
+#elif _IS_OS_LINUX
 
 #include <sys/mman.h>
 #include <unistd.h>
 
-#endif  // _DEFS_OS_
-
-static inline size_t _os_get_pagesize() {
-    size_t res = 0;
-#if _DEFS_OS_WINDOWS
-    SYSTEM_INFO sysInfo = { 0 };
-    GetSystemInfo(&sysInfo);
-    res = sysInfo.dwPageSize;
-#elif _DEFS_OS_LINUX
-    res = sysconf(_SC_PAGESIZE);
-#endif
-    return res;
+_Init(_linux_pagesize_init) {
+    _pageSize = sysconf(_SC_PAGESIZE);
 }
+
+#endif  // _IS_OS_
 
 static inline void *_os_virtual_reserve(size_t size) {
     void *ptr = NULL;
-#if _DEFS_OS_WINDOWS
+#if _IS_OS_WINDOWS
     ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
     assert(ptr != NULL && "VirtualAlloc(): reserve failed");
-#elif _DEFS_OS_LINUX
+#elif _IS_OS_LINUX
     ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == MAP_FAILED) {    // FATAL error
         assert(false && "mmap(): reserve failed");
@@ -102,7 +115,7 @@ static inline void *_os_virtual_reserve(size_t size) {
 }
 
 static bool _os_virtual_commit(void *ptr, size_t size) {
-#if _DEFS_OS_WINDOWS
+#if _IS_OS_WINDOWS
     void *res = VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
     if (res == NULL) {
         DWORD lastErr = GetLastError();
@@ -115,7 +128,7 @@ static bool _os_virtual_commit(void *ptr, size_t size) {
             return false;
         }
     }
-#elif _DEFS_OS_LINUX
+#elif _IS_OS_LINUX
     // manually align to page boundary for linux
     int res = mprotect(ptr, size, PROT_READ | PROT_WRITE);
     if (res == -1) {
@@ -127,12 +140,12 @@ static bool _os_virtual_commit(void *ptr, size_t size) {
 }
 
 static inline bool _os_virtual_decommit(void *ptr, size_t size) {
-#if _DEFS_OS_WINDOWS
+#if _IS_OS_WINDOWS
     if (!VirtualFree(ptr, size, MEM_DECOMMIT)) {
         assert(false && "VirtualFree(): decommit failed");
         return false;
     }
-#elif _DEFS_OS_LINUX
+#elif _IS_OS_LINUX
     mprotect(ptr, size, PROT_NONE);
     madvise(ptr, size, MADV_DONTNEED);
 #endif
@@ -140,13 +153,13 @@ static inline bool _os_virtual_decommit(void *ptr, size_t size) {
 }
 
 static inline bool _os_virtual_release(void *ptr, size_t size) {
-#if _DEFS_OS_WINDOWS
+#if _IS_OS_WINDOWS
     (void)size;
     if (!VirtualFree(ptr, 0, MEM_RELEASE)) {
         assert(false && "VirtualFree(): release failed");
         return false;
     }
-#elif _DEFS_OS_LINUX
+#elif _IS_OS_LINUX
     munmap(ptr, size);
 #endif
     return true;
@@ -171,21 +184,17 @@ typedef struct Arena {
 } Arena;
 
 static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
-    size_t pageSize = _os_get_pagesize();
-
-#if _DEFS_OS_WINDOWS
+#if _IS_OS_WINDOWS
     // reserving less than 64KiB on windows is waste,
     // ptr must be align with dwAllocationGranularity
-    SYSTEM_INFO sysInfo = { 0 };
-    GetSystemInfo(&sysInfo);
-    reserveSize = _alignup_pow2(reserveSize, sysInfo.dwAllocationGranularity);
-#elif _DEFS_OS_LINUX
+    reserveSize = _alignup_pow2(reserveSize, _win32_sysInfo.dwAllocationGranularity);
+#elif _IS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
-    reserveSize = _alignup_pow2(reserveSize, pageSize);
+    reserveSize = _alignup_pow2(reserveSize, _pageSize);
 #endif
 
     // align per_commit_size with pagesize
-    perCommitSize = _alignup_pow2(perCommitSize, pageSize);
+    perCommitSize = _alignup_pow2(perCommitSize, _pageSize);
     // ptr is already aligned for us
     void *ptr = _os_virtual_reserve(reserveSize);
     if (ptr == NULL) return (Arena) { 0 };
@@ -198,7 +207,7 @@ static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
 }
 
 static inline Arena arena_init() {
-    size_t perCommitSize = _os_get_pagesize() * 2;  // TODO:???
+    size_t perCommitSize = _pageSize * 2;   // TODO:???
     return arena_init_ex(DEFS_ARENA_DEFAULT_RESERVE_SIZE, perCommitSize);
 }
 
@@ -333,4 +342,4 @@ static inline void scratches_free() {
 // TODO: bitmap allocator
 // https://medium.com/@tom_84912/object-allocators-%E1%B4%99-us-dc0edda80c58
 
-#endif  // _DEFS_ARENA_H
+#endif  // _ARENA_H
