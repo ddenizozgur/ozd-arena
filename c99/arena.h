@@ -63,6 +63,8 @@
  *
  */
 
+#define _ArrayLen(arr)  (sizeof(arr) / sizeof((arr)[0]))
+
 #include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
@@ -292,19 +294,18 @@ static inline Arena *_scratches_get() {
     return _scratches;
 }
 
-// requires null terminated array
-static inline bool _arena_has_conflict(const Arena *arena, const Arena *conflicts[]) {
-    for (const Arena **it = conflicts; *it != NULL; it++)
-        if (arena == *it) return true;
+static inline bool _arena_has_conflict(const Arena *arena, const Arena *conflicts[], size_t count) {
+    for (size_t i = 0; i < count; i++)
+        if (arena == conflicts[i]) return true;
     return false;
 }
 
-static inline Arena *_arena_find_from_scratches(const Arena *conflicts[]) {
+static inline Arena *_arena_find_from_scratches(const Arena *conflicts[], size_t count) {
     Arena *scratches = _scratches_get();
 
     for (size_t i = 0; i < DEFS_PER_THREAD_SCRATCH_COUNT; i++) {
         Arena *it = &scratches[i];
-        if (!_arena_has_conflict(it, conflicts)) {
+        if (!_arena_has_conflict(it, conflicts, count)) {
             return it;
         }
     }
@@ -316,8 +317,8 @@ static inline Arena *_arena_find_from_scratches(const Arena *conflicts[]) {
  *
  */
 
-static inline Arena_Temp _scratch_begin(const Arena *conflicts[]) {
-    Arena *scratch = _arena_find_from_scratches(conflicts);
+static inline Arena_Temp _scratch_begin(const Arena *conflicts[], size_t count) {
+    Arena *scratch = _arena_find_from_scratches(conflicts, count);
     if (scratch == NULL) {
         assert(false && "conflict with all scratch arenas");
         return (Arena_Temp) { 0 };
@@ -325,7 +326,7 @@ static inline Arena_Temp _scratch_begin(const Arena *conflicts[]) {
     return arena_temp_begin(scratch);
 }
 // null terminated array
-#define ScratchBegin(...)   _scratch_begin((const Arena *[]) { __VA_ARGS__, NULL })
+#define ScratchBegin(...)   _scratch_begin((const Arena *[]) { __VA_ARGS__ }, _ArrayLen(((const Arena *[]) { __VA_ARGS__ })))
 #define ScratchEnd(scratch) arena_temp_end(scratch)
 
 static inline void scratches_free() {
