@@ -45,7 +45,7 @@ const char *cstr_fmt(Arena *arena, const char *fmt, ...) {
 }
 
 void tprintln_fmt(const char *fmt, ...) {
-    Arena_Temp scratch = ScratchBegin();
+    Arena_Temp scratch = scratch_begin();
 
     va_list args;
     va_start(args, fmt);
@@ -54,7 +54,7 @@ void tprintln_fmt(const char *fmt, ...) {
 
     puts(ptr);
 
-    ScratchEnd(scratch);
+    scratch_end(scratch);
 }
 
 int main() {

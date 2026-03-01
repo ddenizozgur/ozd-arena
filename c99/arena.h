@@ -46,24 +46,25 @@
 #define _AlignOf(T) __alignof__(T)
 #endif
 
+#define _GlueStep0(A, B)    A##B
+#define Glue(A, B)          _GlueStep0(A, B)
+
 #if _IS_COMPILER_MSVC
 #pragma section(".CRT$XCU", read)
-#define _Init(name)                         \
-    static void name(void);                 \
-    __declspec(allocate(".CRT$XCU"))        \
-    static void (*name##_Ptr)(void) = name; \
-    static void name(void)
+#define _Init(name) \
+static void name(void); \
+__declspec(allocate(".CRT$XCU")) \
+static void (*Glue(name, _Ptr))(void) = name; \
+static void name(void)
 #elif _IS_COMPILER_GCC || _IS_COMPILER_CLANG
-#define _Init(name)                         \
-    __attribute__((constructor))            \
-    static void name(void)
+#define _Init(name) \
+__attribute__((constructor)) \
+static void name(void)
 #endif  // IS_COMPILER_
 
 /*
  *
  */
-
-#define _ArrayLen(arr)  (sizeof(arr) / sizeof((arr)[0]))
 
 #include <stddef.h>
 #include <stdint.h>
@@ -77,7 +78,7 @@ static inline size_t _alignup_pow2(size_t n, size_t align)  { return (n + (align
  *
  */
 
-static size_t _pageSize = 0;
+static size_t _os_pageSize = 0;
 
 #if _IS_OS_WINDOWS
 
@@ -86,8 +87,12 @@ static size_t _pageSize = 0;
 
 static SYSTEM_INFO _win32_sysInfo = { 0 };
 _Init(_win32_sysinfo_init) {
+#if _IS_ARCH_X64
     GetSystemInfo(&_win32_sysInfo);
-    _pageSize = _win32_sysInfo.dwPageSize;
+// #elif _IS_ARCH_X86
+//     GetNativeSystemInfo(&_win32_sysInfo);
+#endif
+    _os_pageSize = _win32_sysInfo.dwPageSize;
 }
 
 #elif _IS_OS_LINUX
@@ -96,7 +101,7 @@ _Init(_win32_sysinfo_init) {
 #include <unistd.h>
 
 _Init(_linux_pagesize_init) {
-    _pageSize = sysconf(_SC_PAGESIZE);
+    _os_pageSize = sysconf(_SC_PAGESIZE);
 }
 
 #endif  // _IS_OS_
@@ -162,7 +167,8 @@ static inline bool _os_virtual_release(void *ptr, size_t size) {
 #define MiB(n)  ((size_t)(n) << 20ull)
 #define GiB(n)  ((size_t)(n) << 30ull)
 
-#define DEFS_ARENA_DEFAULT_RESERVE_SIZE (MiB(128))
+#define ARENA_DEFAULT_RESERVE_SIZE      (MiB(128))
+#define ARENA_DEFAULT_PER_COMMIT_SIZE   (KiB(8))
 
 typedef struct Arena {
     void *ptr;
@@ -179,11 +185,11 @@ static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
     reserveSize = _alignup_pow2(reserveSize, _win32_sysInfo.dwAllocationGranularity);
 #elif _IS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
-    reserveSize = _alignup_pow2(reserveSize, _pageSize);
+    reserveSize = _alignup_pow2(reserveSize, _os_pageSize);
 #endif
 
     // align per_commit_size with pagesize
-    perCommitSize = _alignup_pow2(perCommitSize, _pageSize);
+    perCommitSize = _alignup_pow2(perCommitSize, _os_pageSize);
     // ptr is already aligned for us
     void *ptr = _os_virtual_reserve(reserveSize);
     if (ptr == NULL) return (Arena) { 0 };
@@ -196,8 +202,10 @@ static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
 }
 
 static inline Arena arena_init() {
-    size_t perCommitSize = _pageSize * 2;   // TODO:???
-    return arena_init_ex(DEFS_ARENA_DEFAULT_RESERVE_SIZE, perCommitSize);
+    return arena_init_ex(
+        ARENA_DEFAULT_RESERVE_SIZE,
+        ARENA_DEFAULT_PER_COMMIT_SIZE
+    );
 }
 
 static inline size_t arena_get_pos(const Arena *arena) {
@@ -270,55 +278,57 @@ static inline void arena_temp_end(Arena_Temp temp)      { arena_pop_to(temp.aren
  *
  */
 
-#define DEFS_PER_THREAD_SCRATCH_COUNT   (2)
-static _THREAD_LOCAL Arena _scratches[DEFS_PER_THREAD_SCRATCH_COUNT] = { 0 };
+#define PER_THREAD_SCRATCH_COUNT    (4)
+
+struct {
+    Arena arr[PER_THREAD_SCRATCH_COUNT];
+    bool taken[PER_THREAD_SCRATCH_COUNT];
+} static _THREAD_LOCAL _scratchState = { 0 };
 
 static inline Arena *_scratches_get() {
-    if (_scratches[0].ptr == NULL) {
-        for (size_t i = 0; i < DEFS_PER_THREAD_SCRATCH_COUNT; i++)
-            _scratches[i] = arena_init();
+    if (_scratchState.arr[0].ptr == NULL) {
+        for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++)
+            _scratchState.arr[i] = arena_init();
     }
-    return _scratches;
-}
-
-static inline bool _arena_has_conflict(const Arena *arena, const Arena *conflicts[], size_t count) {
-    for (size_t i = 0; i < count; i++)
-        if (arena == conflicts[i]) return true;
-    return false;
-}
-
-static inline Arena *_arena_find_from_scratches(const Arena *conflicts[], size_t count) {
-    Arena *scratches = _scratches_get();
-
-    for (size_t i = 0; i < DEFS_PER_THREAD_SCRATCH_COUNT; i++) {
-        Arena *it = &scratches[i];
-        if (!_arena_has_conflict(it, conflicts, count)) {
-            return it;
-        }
-    }
-
-    return NULL;
+    return _scratchState.arr;
 }
 
 /*
  *
  */
 
-static inline Arena_Temp _scratch_begin(const Arena *conflicts[], size_t count) {
-    Arena *scratch = _arena_find_from_scratches(conflicts, count);
-    if (scratch == NULL) {
-        assert(false && "conflict with all scratch arenas");
-        return (Arena_Temp) { 0 };
+static inline Arena_Temp scratch_begin() {
+    Arena *scratches = _scratches_get();
+
+    for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+        if (!_scratchState.taken[i]) {
+            _scratchState.taken[i] = true;
+            return arena_temp_begin(&scratches[i]);
+        }
     }
-    return arena_temp_begin(scratch);
+
+    assert(false && "conflict with all scratch arenas");
+    return (Arena_Temp) { 0 };
 }
-#define ScratchBegin(...)   _scratch_begin((const Arena *[]) { NULL, __VA_ARGS__ }, _ArrayLen(((const Arena *[]) { NULL, __VA_ARGS__ })))
-#define ScratchEnd(scratch) arena_temp_end(scratch)
+static inline bool scratch_end(Arena_Temp scratch) {
+    for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+        if (scratch.arena == &_scratchState.arr[i]) {
+            _scratchState.taken[i] = false;
+            arena_temp_end(scratch);
+            return true;
+        }
+    }
+
+    assert(false && "non-scratch arena passed to function");
+    return false;
+}
 
 static inline void scratches_free() {
-    if (_scratches[0].ptr != NULL) {
-        for (size_t i = 0; i < DEFS_PER_THREAD_SCRATCH_COUNT; i++)
-            arena_free(&_scratches[i]);
+    if (_scratchState.arr[0].ptr != NULL) {
+        for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+            arena_free(&_scratchState.arr[i]);
+            _scratchState.taken[i] = false;
+        }
     }
 }
 

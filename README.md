@@ -17,8 +17,8 @@ Including it in multiple `.cpp` files will duplicate static state and break the 
 ```cpp
 #include "arena.hpp"
 
-#include <cstdio>
-#include <cstdarg>
+#include <stdio.h>
+#include <stdarg.h>
 
 const char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     va_list copyArgs;
@@ -34,7 +34,7 @@ const char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     auto arenaState = arena_temp_begin(arena);
 
     size_t neededBytes = bytes + 1ull;
-    char *ptr = ArenaPush<char>(arena, neededBytes);
+    char *ptr = arena_push<char>(arena, neededBytes);
     if (ptr == nullptr) {
         va_end(copyArgs);
         return nullptr;
@@ -62,7 +62,7 @@ const char *cstr_fmt(Arena *arena, const char *fmt, ...) {
 }
 
 void tprintln_fmt(const char *fmt, ...) {
-    auto scratch = ScratchBegin();
+    auto scratch = scratch_begin();
 
     va_list args;
     va_start(args, fmt);
@@ -71,12 +71,11 @@ void tprintln_fmt(const char *fmt, ...) {
 
     puts(ptr);
 
-    ScratchEnd(scratch);
+    scratch_end(scratch);
 }
 
 int main() {
-    auto arena = arena_init_ex(GiB(256), KiB(8));
-    // auto arena = arena_init();
+    auto arena = arena_init(GiB(256), KiB(8));
 
     const char *cStr = cstr_fmt(&arena, "This is a test: \t%d", 46);
     puts(cStr);
