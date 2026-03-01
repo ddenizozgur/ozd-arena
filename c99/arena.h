@@ -278,19 +278,21 @@ static inline void arena_temp_end(Arena_Temp temp)      { arena_pop_to(temp.aren
  *
  */
 
+struct _Scratch {
+    Arena arena;
+    bool inUse;
+};
+
 #define PER_THREAD_SCRATCH_COUNT    (4)
+static _THREAD_LOCAL struct _Scratch
+    _scratches[PER_THREAD_SCRATCH_COUNT] = { 0 };
 
-struct {
-    Arena arr[PER_THREAD_SCRATCH_COUNT];
-    bool taken[PER_THREAD_SCRATCH_COUNT];
-} static _THREAD_LOCAL _scratchState = { 0 };
-
-static inline Arena *_scratches_get() {
-    if (_scratchState.arr[0].ptr == NULL) {
-        for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++)
-            _scratchState.arr[i] = arena_init();
+static inline struct _Scratch *_scratches_get() {
+    if (_scratches[0].arena.ptr == NULL) {
+        for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++)
+            _scratches[i].arena = arena_init();
     }
-    return _scratchState.arr;
+    return _scratches;
 }
 
 /*
@@ -298,12 +300,12 @@ static inline Arena *_scratches_get() {
  */
 
 static inline Arena_Temp scratch_begin() {
-    Arena *scratches = _scratches_get();
+    struct _Scratch *scratches = _scratches_get();
 
-    for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-        if (!_scratchState.taken[i]) {
-            _scratchState.taken[i] = true;
-            return arena_temp_begin(&scratches[i]);
+    for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+        if (!scratches[i].inUse) {
+            scratches[i].inUse = true;
+            return arena_temp_begin(&scratches[i].arena);
         }
     }
 
@@ -311,9 +313,9 @@ static inline Arena_Temp scratch_begin() {
     return (Arena_Temp) { 0 };
 }
 static inline bool scratch_end(Arena_Temp scratch) {
-    for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-        if (scratch.arena == &_scratchState.arr[i]) {
-            _scratchState.taken[i] = false;
+    for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+        if (scratch.arena == &_scratches[i].arena) {
+            _scratches[i].inUse = false;
             arena_temp_end(scratch);
             return true;
         }
@@ -324,10 +326,10 @@ static inline bool scratch_end(Arena_Temp scratch) {
 }
 
 static inline void scratches_free() {
-    if (_scratchState.arr[0].ptr != NULL) {
-        for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-            arena_free(&_scratchState.arr[i]);
-            _scratchState.taken[i] = false;
+    if (_scratches[0].arena.ptr != NULL) {
+        for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+            arena_free(&_scratches[i].arena);
+            _scratches[i].inUse = false;
         }
     }
 }

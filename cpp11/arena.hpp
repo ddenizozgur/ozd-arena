@@ -272,54 +272,58 @@ inline void arena_temp_end(Arena_Temp temp)      { arena_pop_to(temp.arena, temp
  *
  */
 
+struct _Scratch {
+    Arena arena;
+    bool inUse;
+};
+
 constexpr unsigned int PER_THREAD_SCRATCH_COUNT = 4;
+static thread_local _Scratch
+    _scratches[PER_THREAD_SCRATCH_COUNT] = {};
 
-struct {
-    Arena arr[PER_THREAD_SCRATCH_COUNT] = {};
-    bool taken[PER_THREAD_SCRATCH_COUNT] = {};
-} static thread_local _scratchState = {};
-
-inline Arena *_scratches_get() {
-    if (_scratchState.arr[0].ptr == nullptr) {
-        for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++)
-            _scratchState.arr[i] = arena_init();
+inline _Scratch *_scratches_get() {
+    if (_scratches[0].arena.ptr == nullptr) {
+        for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++)
+            _scratches[i].arena = arena_init();
     }
-    return _scratchState.arr;
+    return _scratches;
 }
 
 inline Arena_Temp scratch_begin() {
     auto scratches = _scratches_get();
 
-    for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-        if (!_scratchState.taken[i]) {
-            _scratchState.taken[i] = true;
-            return arena_temp_begin(&scratches[i]);
+    for (unsigned int i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
+        if (!scratches[i].inUse) {
+            scratches[i].inUse = true;
+            return arena_temp_begin(&scratches[i].arena);
         }
     }
 
     assert(false && "conflict with all scratch arenas");
     return {};
 }
-inline void scratch_end(Arena_Temp scratch) {
+
+inline bool scratch_end(Arena_Temp scratch) {
     for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-        if (scratch.arena == &_scratchState.arr[i]) {
-            _scratchState.taken[i] = false;
+        if (scratch.arena == &_scratches[i].arena) {
+            _scratches[i].inUse = false;
             arena_temp_end(scratch);
-            return;
+            return true;
         }
     }
-    assert(false && "non-scratch arena passed to function");
+
+    assert(false && "non-scratch argument passed");
+    return false;
 }
 
 inline void scratches_free() {
-    if (_scratchState.arr[0].ptr != nullptr) {
+    if (_scratches[0].arena.ptr != nullptr) {
         for (size_t i = 0; i < PER_THREAD_SCRATCH_COUNT; i++) {
-            arena_free(&_scratchState.arr[i]);
-            _scratchState.taken[i] = false;
+            arena_free(&_scratches[i].arena);
+            _scratches[i].inUse = false;
         }
     }
 }
-
 
 /*
  *
