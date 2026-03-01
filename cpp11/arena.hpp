@@ -79,7 +79,7 @@ _Init(_win32_sysinfo_init) {
 #include <sys/mman.h>
 #include <unistd.h>
 
-Init(_linux_pagesize_init) {
+_Init(_linux_pagesize_init) {
     _os_pageSize = sysconf(_SC_PAGESIZE);
 }
 
