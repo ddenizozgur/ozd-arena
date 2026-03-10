@@ -34,22 +34,19 @@
 #include <stddef.h>
 #include <assert.h>
 
-#define _GlueStep0(x, y)    x##y
-#define _Glue(x, y)         _GlueStep0(x, y)
+#define _glue_step0(x, y)   x##y
+#define _glue(x, y)         _glue_step0(x, y)
 
 // thread safe
-#define _Init(name) \
-static void name(); \
-static int _Glue(name, Init) = []() { name(); return 0; }(); \
-static void name()
+#define _init(tag) \
+static void tag(); \
+static int _glue(tag, Init) = []() { tag(); return 0; }(); \
+static void tag()
 
-constexpr size_t KiB(size_t n) { return n << 10ull; }
-constexpr size_t MiB(size_t n) { return n << 20ull; }
-constexpr size_t GiB(size_t n) { return n << 30ull; }
-
-constexpr bool IsPow2(size_t x)         { return x != 0 && (x & (x - 1)) == 0; }
-constexpr bool IsPow2OrZero(size_t x)   { return ((x - 1) & x) == 0; }
-constexpr size_t AlignUpPow2(size_t n, size_t align) {
+constexpr bool _is_pow2(size_t x) {
+    return x != 0 && (x & (x - 1)) == 0;
+}
+constexpr size_t _alignup_pow2(size_t n, size_t align) {
     return (n + (align - 1)) & ~(align - 1);
 }
 
@@ -64,14 +61,14 @@ static size_t _os_pageSize = 0;
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-static SYSTEM_INFO _win32_sysInfo = {};
-_Init(_win32_sysinfo_init) {
+static SYSTEM_INFO _os_win32_sysInfo = {};
+_init(_os_win32_sysinfo_init) {
 #if _IS_ARCH_X64
-    GetSystemInfo(&_win32_sysInfo);
+    GetSystemInfo(&_os_win32_sysInfo);
 // #elif _IS_ARCH_X86
-//     GetNativeSystemInfo(&_win32_sysInfo);
+//     GetNativeSystemInfo(&_os_win32_sysInfo);
 #endif
-    _os_pageSize = _win32_sysInfo.dwPageSize;
+    _os_pageSize = _os_win32_sysInfo.dwPageSize;
 }
 
 #elif _IS_OS_LINUX
@@ -79,7 +76,7 @@ _Init(_win32_sysinfo_init) {
 #include <sys/mman.h>
 #include <unistd.h>
 
-_Init(_linux_pagesize_init) {
+_init(_os_linux_pagesize_init) {
     _os_pageSize = sysconf(_SC_PAGESIZE);
 }
 
@@ -155,8 +152,12 @@ inline bool _os_virtual_release(void *ptr, size_t size) {
  *
  */
 
-constexpr size_t ARENA_DEFAULT_RESERVE_SIZE = MiB(64);
-constexpr size_t ARENA_DEFAULT_PER_COMMIT_SIZE = KiB(8);
+constexpr size_t kilobytes(size_t n) { return           n  * 1024; }
+constexpr size_t megabytes(size_t n) { return kilobytes(n) * 1024; }
+constexpr size_t gigabytes(size_t n) { return megabytes(n) * 1024; }
+
+constexpr size_t ARENA_DEFAULT_RESERVE_SIZE = megabytes(64);
+constexpr size_t ARENA_DEFAULT_PER_COMMIT_SIZE = kilobytes(8);
 
 struct Arena {
     void *ptr;
@@ -173,16 +174,16 @@ static Arena arena_init(
 #if _IS_OS_WINDOWS
     // reserving less than 64KiB on windows is waste,
     // ptr must be align with dwAllocationGranularity
-    reserveSize = AlignUpPow2(reserveSize, _win32_sysInfo.dwAllocationGranularity);
+    reserveSize = _alignup_pow2(reserveSize, _os_win32_sysInfo.dwAllocationGranularity);
 #elif _IS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
-    reserveSize = AlignUpPow2(reserveSize, _os_pageSize);
+    reserveSize = _alignup_pow2(reserveSize, _os_pageSize);
 #endif
 
     perCommitSize = perCommitSize < reserveSize ? perCommitSize : reserveSize;
 
     // align per_commit_size with pagesize
-    perCommitSize = AlignUpPow2(perCommitSize, _os_pageSize);
+    perCommitSize = _alignup_pow2(perCommitSize, _os_pageSize);
     // ptr is already aligned for us
     void *ptr = _os_virtual_reserve(reserveSize);
     if (ptr == nullptr) return {};
@@ -201,9 +202,9 @@ inline size_t arena_get_pos(const Arena *arena) {
 
 static void *arena_push_ex(Arena *arena, size_t size, size_t align) {
     // windows and linux always zeroes fresh commits
-    assert(IsPow2(align) && "alignment must be non-zero power of 2");
+    assert(_is_pow2(align) && "alignment must be non-zero power of 2");
 
-    size_t lastPos = AlignUpPow2(arena->pos, align);
+    size_t lastPos = _alignup_pow2(arena->pos, align);
     size_t postPos = lastPos + size;
 
     size_t reserved = arena->reserved;
@@ -215,7 +216,7 @@ static void *arena_push_ex(Arena *arena, size_t size, size_t align) {
     size_t committed = arena->committed;
     if (postPos > committed) {
         size_t needed = postPos - committed;
-        size_t newCommit = AlignUpPow2(needed, arena->perCommitSize);
+        size_t newCommit = _alignup_pow2(needed, arena->perCommitSize);
 
         size_t maxCommit = reserved - committed;
         newCommit = newCommit < maxCommit ? newCommit : maxCommit;
@@ -299,7 +300,7 @@ inline Arena_Temp scratch_begin() {
         }
     }
 
-    assert(false && "conflict with all scratch arenas");
+    assert(false && "all scratch arenas in use");
     return {};
 }
 

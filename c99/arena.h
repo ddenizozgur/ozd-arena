@@ -39,27 +39,27 @@
 #endif
 
 #if _IS_COMPILER_MSVC
-#define _AlignOf(T) __alignof(T)
+#define _align_of(T)    __alignof(T)
 #elif _IS_COMPILER_CLANG
-#define _AlignOf(T) __alignof(T)
+#define _align_of(T)    __alignof(T)
 #elif _IS_COMPILER_GCC
-#define _AlignOf(T) __alignof__(T)
+#define _align_of(T)    __alignof__(T)
 #endif
 
-#define _GlueStep0(A, B)    A##B
-#define Glue(A, B)          _GlueStep0(A, B)
+#define _glue_step0(A, B)   A##B
+#define _glue(A, B)         _glue_step0(A, B)
 
 #if _IS_COMPILER_MSVC
 #pragma section(".CRT$XCU", read)
-#define _Init(name) \
-static void name(void); \
+#define _init(tag) \
+static void tag(void); \
 __declspec(allocate(".CRT$XCU")) \
-static void (*Glue(name, _Ptr))(void) = name; \
-static void name(void)
+static void (*_glue(tag, _Ptr))(void) = tag; \
+static void tag(void)
 #elif _IS_COMPILER_GCC || _IS_COMPILER_CLANG
-#define _Init(name) \
+#define _init(tag) \
 __attribute__((constructor)) \
-static void name(void)
+static void tag(void)
 #endif  // IS_COMPILER_
 
 /*
@@ -85,14 +85,14 @@ static size_t _os_pageSize = 0;
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-static SYSTEM_INFO _win32_sysInfo = { 0 };
-_Init(_win32_sysinfo_init) {
+static SYSTEM_INFO _os_win32_sysInfo = { 0 };
+_init(_os_win32_sysinfo_init) {
 #if _IS_ARCH_X64
-    GetSystemInfo(&_win32_sysInfo);
+    GetSystemInfo(&_os_win32_sysInfo);
 // #elif _IS_ARCH_X86
-//     GetNativeSystemInfo(&_win32_sysInfo);
+//     GetNativeSystemInfo(&_os_win32_sysInfo);
 #endif
-    _os_pageSize = _win32_sysInfo.dwPageSize;
+    _os_pageSize = _os_win32_sysInfo.dwPageSize;
 }
 
 #elif _IS_OS_LINUX
@@ -100,7 +100,7 @@ _Init(_win32_sysinfo_init) {
 #include <sys/mman.h>
 #include <unistd.h>
 
-_Init(_linux_pagesize_init) {
+_init(_os_linux_pagesize_init) {
     _os_pageSize = sysconf(_SC_PAGESIZE);
 }
 
@@ -163,12 +163,12 @@ static inline bool _os_virtual_release(void *ptr, size_t size) {
  *
  */
 
-#define KiB(n)  ((size_t)(n) << 10ull)
-#define MiB(n)  ((size_t)(n) << 20ull)
-#define GiB(n)  ((size_t)(n) << 30ull)
+static inline size_t kilobytes(size_t n) { return           n  * 1024; }
+static inline size_t megabytes(size_t n) { return kilobytes(n) * 1024; }
+static inline size_t gigabytes(size_t n) { return megabytes(n) * 1024; }
 
-#define ARENA_DEFAULT_RESERVE_SIZE      (MiB(128))
-#define ARENA_DEFAULT_PER_COMMIT_SIZE   (KiB(8))
+#define ARENA_DEFAULT_RESERVE_SIZE      (megabytes(128))
+#define ARENA_DEFAULT_PER_COMMIT_SIZE   (kilobytes(8))
 
 typedef struct Arena {
     void *ptr;
@@ -182,11 +182,13 @@ static Arena arena_init_ex(size_t reserveSize, size_t perCommitSize) {
 #if _IS_OS_WINDOWS
     // reserving less than 64KiB on windows is waste,
     // ptr must be align with dwAllocationGranularity
-    reserveSize = _alignup_pow2(reserveSize, _win32_sysInfo.dwAllocationGranularity);
+    reserveSize = _alignup_pow2(reserveSize, _os_win32_sysInfo.dwAllocationGranularity);
 #elif _IS_OS_LINUX
     // linux can reserve 4KiB smallest, basically pagesize
     reserveSize = _alignup_pow2(reserveSize, _os_pageSize);
 #endif
+
+    perCommitSize = perCommitSize < reserveSize ? perCommitSize : reserveSize;
 
     // align per_commit_size with pagesize
     perCommitSize = _alignup_pow2(perCommitSize, _os_pageSize);
@@ -259,7 +261,7 @@ static inline void arena_free(Arena *arena) {
     *arena = (Arena) { 0 };
 }
 
-#define ArenaPush(arena, T, count)  (T *)arena_push_ex(arena, sizeof(T) * count, _AlignOf(T))
+#define ArenaPush(arena, T, count)  (T *)arena_push_ex(arena, sizeof(T) * count, _align_of(T))
 #define ArenaPop(arena, T, count)   arena_pop_by(arena, sizeof(T) * count)
 
 /*
@@ -309,7 +311,7 @@ static inline Arena_Temp scratch_begin() {
         }
     }
 
-    assert(false && "conflict with all scratch arenas");
+    assert(false && "all scratch arenas in use");
     return (Arena_Temp) { 0 };
 }
 static inline bool scratch_end(Arena_Temp scratch) {
@@ -321,7 +323,7 @@ static inline bool scratch_end(Arena_Temp scratch) {
         }
     }
 
-    assert(false && "non-scratch arena passed to function");
+    assert(false && "non-scratch argument passed");
     return false;
 }
 

@@ -75,7 +75,7 @@ void tprintln_fmt(const char *fmt, ...) {
 }
 
 int main() {
-    auto arena = arena_init(GiB(256), KiB(8));
+    auto arena = arena_init(gigabytes(256), kilobytes(8));
 
     const char *cStr = cstr_fmt(&arena, "This is a test: \t%d", 46);
     puts(cStr);
