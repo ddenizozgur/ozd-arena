@@ -17,7 +17,7 @@ const char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     Arena_Temp arenaState = arena_temp_begin(arena);
 
     size_t neededBytes = bytes + 1ull;
-    char *ptr = ArenaPush(arena, char, neededBytes);
+    char *ptr = arena_push(arena, char, neededBytes);
     if (ptr == NULL) {
         va_end(copyArgs);
         return NULL;

@@ -261,8 +261,8 @@ static inline void arena_free(Arena *arena) {
     *arena = (Arena) { 0 };
 }
 
-#define ArenaPush(arena, T, count)  (T *)arena_push_ex(arena, sizeof(T) * count, _align_of(T))
-#define ArenaPop(arena, T, count)   arena_pop_by(arena, sizeof(T) * count)
+#define arena_push(arena, T, count) (T *)arena_push_ex(arena, sizeof(T) * count, _align_of(T))
+#define arena_pop(arena, T, count)  arena_pop_by(arena, sizeof(T) * count)
 
 /*
  *
