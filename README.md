@@ -7,7 +7,7 @@ A simple, non-chained virtual memory allocator (arena) in C++17.
 
 ## Build Requirements
 Requires a C++17 compliant compiler.
-'clang .\example.cpp -std=c++17 -Wundef'
+`clang .\example.cpp -std=c++17 -Wundef`
 
 ## Usage
 ```cpp
