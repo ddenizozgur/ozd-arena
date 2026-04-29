@@ -1,17 +1,3 @@
-# ozd-arena
-A simple, non-chained virtual memory allocator (arena) in C++17. 
-
-## Platform Support
-* **x86-64:** Windows, Linux
-* **AArch64:** Linux
-
-## Build Requirements
-Requires a C++17 compliant compiler.
-```bash
-clang .\example.cpp -std=c++17 -Wundef
-
-## Usage
-```cpp
 #include "arena/arena.hpp"
 
 #include <stdarg.h>
