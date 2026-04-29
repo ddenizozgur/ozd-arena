@@ -117,3 +117,17 @@
 #if !defined(IS_OS_LINUX)
 #define IS_OS_LINUX 0
 #endif
+
+/*
+ *
+ */
+
+#if IS_COMPILER_MSVC
+#if !defined(_MSVC_LANG) || _MSVC_LANG < 201703L
+#error Requires a C++17 compiler
+#endif
+#else
+#if !defined(__cplusplus) || __cplusplus < 201703L
+#error Requires a C++17 compiler
+#endif
+#endif
