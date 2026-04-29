@@ -3,7 +3,7 @@
 #include "core.hpp"
 #include "virtual.hpp"
 
-constexpr size_t ARENA_DEFAULT_RESERVE_SIZE = megabytes(64);
+constexpr size_t ARENA_DEFAULT_RESERVE_SIZE = megabytes(256);
 constexpr size_t ARENA_DEFAULT_PER_COMMIT_SIZE = kilobytes(8);
 
 struct Arena {
