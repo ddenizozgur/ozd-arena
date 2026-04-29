@@ -1,10 +1,15 @@
 #pragma once
 
+#include "pre.hpp"
 #include <assert.h>
 
 /*
  *
  */
+
+#if IS_OS_LINUX
+#include <stddef.h>
+#endif
 
 template <typename T> constexpr T minimum(T a, T b) { return a < b ? a : b; }
 template <typename T> constexpr T maximum(T a, T b) { return a > b ? a : b; }
