@@ -146,7 +146,6 @@ int main() {
   const char *slug = generate_slug(&arena, " Some Library: V2! ");
   puts(slug);
 
-  // Frees the entire 256GB block back to the OS.
   arena_free(&arena);
 
   tprintln_fmt("This is a test 2: \t%s", "testinator");
