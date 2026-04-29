@@ -1,5 +1,5 @@
 # ozd-arena
-A simple, non-chained virtual memory allocator (arena) in C++17. 
+A simple, non-chained linear memory allocator (arena) in C++17. 
 
 ## Platform Support
 * **x86-64:** Windows, Linux
