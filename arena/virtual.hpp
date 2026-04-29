@@ -24,10 +24,10 @@ inline SYSTEM_INFO os_win32_sysinfo = _os_win32_sysinfo_init();
 #include <unistd.h>
 
 inline bool _os_linux_pagesize_init() {
-	os_pagesize = sysconf(_SC_PAGESIZE);
-	return true;
+  os_pagesize = sysconf(_SC_PAGESIZE);
+  return true;
 }
-bool _os_linux_dumb_pagesize_bool = _os_linux_pagesize_init();
+inline bool _os_linux_dumb_pagesize_bool = _os_linux_pagesize_init();
 
 #endif
 
