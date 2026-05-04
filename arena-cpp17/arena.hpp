@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core.hpp"
 #include "virtual.hpp"
 
 constexpr size_t ARENA_DEFAULT_RESERVE_SIZE = megabytes(256);

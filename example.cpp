@@ -121,9 +121,9 @@ char *generate_slug(Arena *arena, const char *input) {
 }
 
 int main() {
-  // Reserve a contiguous block of virtual address space (256 GB) upfront.
+  // Reserve a contiguous block of virtual address space (64 GB) upfront.
   // The OS will commit memory in small chunks (8 KB) as we push.
-  auto arena = arena_init(gigabytes(256), kilobytes(8));
+  auto arena = arena_init(gigabytes(64), kilobytes(8));
 
   // This string lives as long as 'arena' lives.
   const char *cstr = cstr_fmt(&arena, "This is a test: \t%d", 46);
