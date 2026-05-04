@@ -64,60 +64,43 @@ void println_fmt(const char *fmt, ...) {
   scratch_end(scratch);
 }
 
-// Takes two arenas. The 'scratch' arena handles intermediate allocations
-// whose sizes are unknown upfront. The 'arena' holds the final contiguous
-// result.
-char *_generate_slug0(Arena *arena, Arena *scratch, const char *input) {
+// Takes two arenas. While 'scratch' arena handles intermediate allocations,
+// 'arena' holds the final contiguous result.
+char *_remove_spaces0(Arena *arena, Arena *scratch, const char *input) {
   size_t max_len = strlen(input);
+  char *tmp = arena_push<char>(scratch, max_len + 1);
 
-  // Push temporary working memory
-  char *temp_buffer = arena_push<char>(scratch, max_len + 1);
-
-  size_t j = 0;
-  bool last_was_hyphen = true;
-
+  size_t final_len = 0;
   for (size_t i = 0; i < max_len; ++i) {
     char c = input[i];
-    bool is_upper = (c >= 'A' && c <= 'Z');
-    bool is_lower = (c >= 'a' && c <= 'z');
-    bool is_num = (c >= '0' && c <= '9');
-
-    if (is_upper || is_lower || is_num) {
-      temp_buffer[j++] = is_upper ? (c + 32) : c;
-      last_was_hyphen = false;
-    } else if (!last_was_hyphen) {
-      temp_buffer[j++] = '-';
-      last_was_hyphen = true;
+    if (c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' ||
+        c == '\v') {
+    } else {
+      tmp[final_len++] = c;
     }
   }
+  tmp[final_len] = '\0';
 
-  if (j > 0 && temp_buffer[j - 1] == '-')
-    j--;
-  temp_buffer[j] = 0;
+  // Push the final allocation to the target arena.
+  char *final = arena_push<char>(arena, final_len + 1);
+  memcpy(final, tmp, final_len + 1);
 
-  // We now know the exact size. Push the final memory to the 'arena'.
-  char *final_slug = arena_push<char>(arena, j + 1);
-  for (size_t i = 0; i <= j; ++i) {
-    final_slug[i] = temp_buffer[i];
-  }
-
-  return final_slug;
+  return final;
 }
-
-char *generate_slug(Arena *arena, const char *input) {
+char *remove_spaces(Arena *arena, const char *input) {
   // If the user passed the thread's scratch as the 'arena',
   // we bypass scratch_begin(). This prevents scratch_end() from
   // wiping the final result.
   if (arena_is_scratch(arena)) {
-    return _generate_slug0(arena, arena, input);
+    return _remove_spaces0(arena, arena, input);
   }
 
   // Acquire temp memory, do work, release temp memory, return.
   auto scratch = scratch_begin();
-  char *ptr = _generate_slug0(arena, scratch.arena, input);
+  char *result = _remove_spaces0(arena, scratch.arena, input);
   scratch_end(scratch);
 
-  return ptr;
+  return result;
 }
 
 int main() {
@@ -129,9 +112,8 @@ int main() {
   const char *cstr = cstr_fmt(&arena, "This is a test: \t%d", 46);
   puts(cstr);
 
-  // Output: "some-library-v2"
-  const char *slug = generate_slug(&arena, " Some Library: V2! ");
-  puts(slug);
+  const char *space_free = remove_spaces(&arena, " Some Test\tV2\n! ");
+  puts(space_free); // puts() adds newline
 
   arena_free(&arena);
 
