@@ -64,9 +64,11 @@ void println_fmt(const char *fmt, ...) {
   scratch_end(scratch);
 }
 
-// Takes two arenas. While 'scratch' arena handles intermediate allocations,
-// 'arena' holds the final contiguous result.
+// This is not the best example but..
 char *_remove_spaces0(Arena *arena, Arena *scratch, const char *input) {
+  // Takes two arenas. While 'scratch' arena handles intermediate allocations,
+  // 'arena' holds the final contiguous result.
+
   size_t max_len = strlen(input);
   char *tmp = arena_push<char>(scratch, max_len + 1);
 
