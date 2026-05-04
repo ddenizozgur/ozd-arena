@@ -46,11 +46,6 @@ static inline Arena arena_init() {
                        ARENA_DEFAULT_PER_COMMIT_SIZE);
 }
 
-static inline size_t arena_get_pos(const Arena *arena) {
-  // may unaligned !!!
-  return arena->pos;
-}
-
 static inline void *arena_push_ex(Arena *arena, size_t size, size_t alignment) {
   // Windows and Linux always zeroes fresh commits
   size_t last_pos = align_forward_pow2(arena->pos, alignment);
@@ -112,7 +107,7 @@ struct Arena_Temp {
 };
 
 static inline Arena_Temp arena_temp_begin(Arena *arena) {
-  return (Arena_Temp){arena, arena_get_pos(arena)};
+  return (Arena_Temp){arena, arena->pos};
 }
 static inline void arena_temp_end(Arena_Temp temp) {
   arena_pop_to(temp.arena, temp.pos);
