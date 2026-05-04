@@ -86,7 +86,7 @@ static inline void arena_pop_to(Arena *arena,
 //   arena_pop_to(arena, arena->pos - by);
 // }
 
-inline void arena_free(Arena *arena) {
+static inline void arena_free(Arena *arena) {
   if (arena->ptr != NULL) {
     os_virtual_release(arena->ptr, arena->reserved);
   }

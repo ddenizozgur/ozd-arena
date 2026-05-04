@@ -1,6 +1,6 @@
 #pragma once
 
-#include "pre.hpp"
+#include "core.hpp"
 #include <assert.h>
 
 inline size_t os_pagesize = 0;

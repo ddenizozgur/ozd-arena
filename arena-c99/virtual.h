@@ -34,7 +34,7 @@ static inline void *os_virtual_reserve(size_t size) {
   ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (ptr == MAP_FAILED) { // FATAL error
     assert(false && "mmap(): reserve failed");
-    return nullptr;
+    return NULL;
   }
 #endif
   return ptr;
@@ -65,18 +65,18 @@ static inline bool os_virtual_commit(void *ptr, size_t size) {
   return true;
 }
 
-static inline bool os_virtual_decommit(void *ptr, size_t size) {
-#if IS_OS_WINDOWS
-  if (!VirtualFree(ptr, size, MEM_DECOMMIT)) {
-    assert(false && "VirtualFree(): decommit failed");
-    return false;
-  }
-#elif IS_OS_LINUX
-  mprotect(ptr, size, PROT_NONE);
-  madvise(ptr, size, MADV_DONTNEED);
-#endif
-  return true;
-}
+// static inline bool os_virtual_decommit(void *ptr, size_t size) {
+// #if IS_OS_WINDOWS
+//   if (!VirtualFree(ptr, size, MEM_DECOMMIT)) {
+//     assert(false && "VirtualFree(): decommit failed");
+//     return false;
+//   }
+// #elif IS_OS_LINUX
+//   mprotect(ptr, size, PROT_NONE);
+//   madvise(ptr, size, MADV_DONTNEED);
+// #endif
+//   return true;
+// }
 
 static inline bool os_virtual_release(void *ptr, size_t size) {
 #if IS_OS_WINDOWS
