@@ -1,17 +1,21 @@
 # ozd-arena
-A simple, non-chained linear memory allocator (arena) in C++17. 
+
+A simple, non-chained linear memory allocator (arena) implementation.
 
 ## Platform Support
-* **x86-64:** Windows, Linux
-* **AArch64:** Linux
 
-## Build Requirements
-Requires a C++17 compliant compiler.
-`clang .\example.cpp -std=c++17 -Wundef`
+- **x86-64:** Windows, Linux
+- **AArch64:** Linux
+
+## Build
+
+`clang example.cpp -std=c++17 -Wundef`
+`clang example.c -std=c99 -Wundef`
 
 ## Usage
+
 ```cpp
-#include "arena/arena.hpp"
+#include "arena-cpp17/arena.hpp"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,7 +32,7 @@ char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     return nullptr;
   }
 
-  // Take a snapshot of the arena's current position.
+  // Take a snapshot of the arena's current state.
   auto arena_state = arena_temp_begin(arena);
 
   size_t needed_bytes = bytes + 1ull;
@@ -61,7 +65,7 @@ char *cstr_fmt(Arena *arena, const char *fmt, ...) {
   return res;
 }
 
-void tprintln_fmt(const char *fmt, ...) {
+void println_fmt(const char *fmt, ...) {
   // Grab the current thread's scratch arena.
   auto scratch = scratch_begin();
 
@@ -148,9 +152,10 @@ int main() {
 
   arena_free(&arena);
 
-  tprintln_fmt("This is a test 2: \t%s", "testinator");
+  println_fmt("This is a test 2: \t%s", "testinator");
 
   // Release the thread-local scratch arena back to the OS before thread exit.
   scratch_free();
   return 0;
 }
+```

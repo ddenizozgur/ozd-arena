@@ -1,4 +1,4 @@
-#include "arena-cpp17/arena.hpp"
+#include "arena-c99/arena.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -12,17 +12,17 @@ char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
   if (bytes < 0) {
     assert(false && "vsnprintf(): failed");
     va_end(copy_args);
-    return nullptr;
+    return NULL;
   }
 
   // Take a snapshot of the arena's current state.
-  auto arena_state = arena_temp_begin(arena);
+  Arena_Temp arena_state = arena_temp_begin(arena);
 
   size_t needed_bytes = bytes + 1ull;
-  char *ptr = arena_push<char>(arena, needed_bytes);
-  if (ptr == nullptr) {
+  char *ptr = arena_push(arena, char, needed_bytes);
+  if (ptr == NULL) {
     va_end(copy_args);
-    return nullptr;
+    return NULL;
   }
 
   int len = vsnprintf(ptr, needed_bytes, fmt, copy_args);
@@ -34,7 +34,7 @@ char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     arena_temp_end(arena_state);
 
     assert(false && "vsnprintf(): failed");
-    return nullptr;
+    return NULL;
   }
 
   return ptr;
@@ -50,7 +50,7 @@ char *cstr_fmt(Arena *arena, const char *fmt, ...) {
 
 void println_fmt(const char *fmt, ...) {
   // Grab the current thread's scratch arena.
-  auto scratch = scratch_begin();
+  Arena_Temp scratch = scratch_begin();
 
   va_list args;
   va_start(args, fmt);
@@ -71,7 +71,7 @@ char *_generate_slug0(Arena *arena, Arena *scratch, const char *input) {
   size_t max_len = strlen(input);
 
   // Push temporary working memory
-  char *temp_buffer = arena_push<char>(scratch, max_len + 1);
+  char *temp_buffer = arena_push(scratch, char, max_len + 1);
 
   size_t j = 0;
   bool last_was_hyphen = true;
@@ -96,7 +96,7 @@ char *_generate_slug0(Arena *arena, Arena *scratch, const char *input) {
   temp_buffer[j] = 0;
 
   // We now know the exact size. Push the final memory to the 'arena'.
-  char *final_slug = arena_push<char>(arena, j + 1);
+  char *final_slug = arena_push(arena, char, j + 1);
   for (size_t i = 0; i <= j; ++i) {
     final_slug[i] = temp_buffer[i];
   }
@@ -113,7 +113,7 @@ char *generate_slug(Arena *arena, const char *input) {
   }
 
   // Acquire temp memory, do work, release temp memory, return.
-  auto scratch = scratch_begin();
+  Arena_Temp scratch = scratch_begin();
   char *ptr = _generate_slug0(arena, scratch.arena, input);
   scratch_end(scratch);
 
@@ -121,9 +121,9 @@ char *generate_slug(Arena *arena, const char *input) {
 }
 
 int main() {
-  // Reserve a contiguous block of virtual address space (256 GB) upfront.
+  // Reserve a contiguous block of virtual address space (64 GB) upfront.
   // The OS will commit memory in small chunks (8 KB) as we push.
-  auto arena = arena_init(gigabytes(256), kilobytes(8));
+  Arena arena = arena_init_ex(gigabytes(64), kilobytes(8));
 
   // This string lives as long as 'arena' lives.
   const char *cstr = cstr_fmt(&arena, "This is a test: \t%d", 46);
