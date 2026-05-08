@@ -3,12 +3,12 @@
 #include "core.hpp"
 #include <assert.h>
 
-inline size_t os_pagesize = 0;
-
 #if IS_OS_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+
+inline size_t os_pagesize = 0;
 
 inline SYSTEM_INFO _os_win32_sysinfo_init() {
   SYSTEM_INFO sysinfo = {};
@@ -23,11 +23,8 @@ inline SYSTEM_INFO os_win32_sysinfo = _os_win32_sysinfo_init();
 #include <sys/mman.h>
 #include <unistd.h>
 
-inline bool _os_linux_pagesize_init() {
-  os_pagesize = sysconf(_SC_PAGESIZE);
-  return true;
-}
-inline bool _os_linux_dumb_pagesize_bool = _os_linux_pagesize_init();
+inline size_t _os_linux_pagesize_init() { return sysconf(_SC_PAGESIZE); }
+inline size_t os_pagesize = _os_linux_pagesize_init();
 
 #endif
 
