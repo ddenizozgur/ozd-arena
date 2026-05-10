@@ -24,7 +24,7 @@
 #pragma section(".CRT$XCU", read)
 #define before_main(tag)                                                       \
   static void tag(void);                                                       \
-  __declspec(allocate(".CRT$XCU")) void (*glue(tag, _ptr))(void) = tag;        \
+  __declspec(allocate(".CRT$XCU")) static void (*glue(tag, _ptr))(void) = tag; \
   static void tag(void)
 #elif IS_COMPILER_GCC || IS_COMPILER_CLANG
 #define before_main(tag) __attribute__((constructor)) static void tag(void)
