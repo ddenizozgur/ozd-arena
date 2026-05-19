@@ -9,13 +9,13 @@ A simple, non-chained linear memory allocator (arena) implementation.
 
 ## Build
 
-- `clang++ example.cpp -std=c++17 -Wundef`
+- `clang++ example.cpp -std=c++14 -Wundef`
 - `clang example.c -std=c99 -Wundef`
 
 ## Usage
 
 ```cpp
-#include "arena-cpp17/arena.hpp"
+#include "arena-cpp14/arena.hpp"
 
 #include <stdarg.h>
 #include <stdio.h>

@@ -1,9 +1,8 @@
 #pragma once
 
-/*
- *
- */
-
+//
+// CLANG
+//
 #if defined(__clang__)
 
 #define IS_COMPILER_CLANG 1
@@ -29,10 +28,9 @@
 #error Architecture not supported.
 #endif
 
-/*
- *
- */
-
+//
+// MSVC
+//
 #elif defined(_MSC_VER)
 
 #define IS_COMPILER_MSVC 1
@@ -55,10 +53,9 @@
 #error Architecture not supported.
 #endif
 
-/*
- *
- */
-
+//
+// GCC
+//
 #elif defined(__GNUC__) || defined(__GNUG__)
 
 #define IS_COMPILER_GCC 1
@@ -86,10 +83,9 @@
 #error Compiler not supported.
 #endif
 
-/*
- *
- */
-
+//
+// -Wundef is great
+//
 #if !defined(IS_ARCH_X64)
 #define IS_ARCH_X64 0
 #endif
@@ -117,10 +113,6 @@
 #if !defined(IS_OS_LINUX)
 #define IS_OS_LINUX 0
 #endif
-
-/*
- *
- */
 
 // #if IS_COMPILER_MSVC
 // #if !defined(_MSVC_LANG) || _MSVC_LANG < 201703L

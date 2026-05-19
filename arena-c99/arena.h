@@ -96,10 +96,9 @@ static inline void arena_free(Arena *arena) {
 #define arena_push(arena, T, count)                                            \
   (T *)arena_push_ex(arena, sizeof(T) * count, align_of(T))
 
-/*
- *
- */
-
+//
+// State tracking
+//
 typedef struct Arena_Temp Arena_Temp;
 struct Arena_Temp {
   Arena *arena;
@@ -113,10 +112,9 @@ static inline void arena_temp_end(Arena_Temp temp) {
   arena_pop_to(temp.arena, temp.pos);
 }
 
-/*
- *
- */
-
+//
+// Scratch
+//
 static per_thread Arena _scratch = {0};
 
 static inline bool arena_is_scratch(const Arena *arena) {

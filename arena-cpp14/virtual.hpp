@@ -3,28 +3,26 @@
 #include "core.hpp"
 #include <assert.h>
 
+static size_t os_pagesize = 0;
+
 #if IS_OS_WINDOWS
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-inline size_t os_pagesize = 0;
+static SYSTEM_INFO os_win32_sysinfo = {};
 
-inline SYSTEM_INFO _os_win32_sysinfo_init() {
-  SYSTEM_INFO sysinfo = {};
-  GetSystemInfo(&sysinfo);
-  os_pagesize = sysinfo.dwPageSize;
-  return sysinfo;
+before_main(os_win32_sysinfo_init) {
+  GetSystemInfo(&os_win32_sysinfo);
+  os_pagesize = os_win32_sysinfo.dwPageSize;
 }
-inline SYSTEM_INFO os_win32_sysinfo = _os_win32_sysinfo_init();
 
 #elif IS_OS_LINUX
 
 #include <sys/mman.h>
 #include <unistd.h>
 
-inline size_t _os_linux_pagesize_init() { return sysconf(_SC_PAGESIZE); }
-inline size_t os_pagesize = _os_linux_pagesize_init();
+before_main(os_linux_pagesize_init) { os_pagesize = sysconf(_SC_PAGESIZE); }
 
 #endif
 
@@ -68,6 +66,7 @@ inline bool os_virtual_commit(void *ptr, size_t size) {
   return true;
 }
 
+/*
 inline bool os_virtual_decommit(void *ptr, size_t size) {
 #if IS_OS_WINDOWS
   if (!VirtualFree(ptr, size, MEM_DECOMMIT)) {
@@ -80,6 +79,7 @@ inline bool os_virtual_decommit(void *ptr, size_t size) {
 #endif
   return true;
 }
+*/
 
 inline bool os_virtual_release(void *ptr, size_t size) {
 #if IS_OS_WINDOWS

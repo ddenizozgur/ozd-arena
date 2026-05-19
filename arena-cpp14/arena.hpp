@@ -96,10 +96,9 @@ template <typename T> inline T *arena_push(Arena *arena, size_t count = 1) {
 //   arena_pop_by(arena, sizeof(T) * count);
 // }
 
-/*
- *
- */
-
+//
+// State tracking
+//
 struct Arena_Temp {
   Arena *arena;
   size_t pos;
@@ -110,11 +109,10 @@ inline void arena_temp_end(Arena_Temp temp) {
   arena_pop_to(temp.arena, temp.pos);
 }
 
-/*
- *
- */
-
-inline thread_local Arena _scratch = {};
+//
+// Scratch
+//
+static thread_local Arena _scratch = {};
 
 inline bool arena_is_scratch(const Arena *arena) {
   return (arena == &_scratch);

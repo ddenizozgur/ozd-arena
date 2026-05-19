@@ -3,12 +3,18 @@
 #include "pre.hpp"
 #include <assert.h>
 
-/*
- *
- */
-
 #if IS_OS_LINUX
 #include <stddef.h>
+#endif
+
+#if IS_COMPILER_MSVC
+#pragma section(".CRT$XCU", read)
+#define before_main(tag)                                                       \
+  static void tag(void);                                                       \
+  __declspec(allocate(".CRT$XCU")) static void (*glue(tag, _ptr))(void) = tag; \
+  static void tag(void)
+#elif IS_COMPILER_GCC || IS_COMPILER_CLANG
+#define before_main(tag) __attribute__((constructor)) static void tag(void)
 #endif
 
 template <typename T> constexpr T minimum(T a, T b) { return a < b ? a : b; }
