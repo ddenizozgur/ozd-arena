@@ -20,6 +20,9 @@
 #define align_of(T) __alignof__(T)
 #endif
 
+#define glue_0(A, B) A##B
+#define glue(A, B) glue_0(A, B)
+
 #if IS_COMPILER_MSVC
 #pragma section(".CRT$XCU", read)
 #define before_main(tag)                                                       \

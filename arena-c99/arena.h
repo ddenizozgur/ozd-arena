@@ -94,7 +94,7 @@ static inline void arena_free(Arena *arena) {
 }
 
 #define arena_push(arena, T, count)                                            \
-  (T *)arena_push_ex(arena, sizeof(T) * count, align_of(T))
+  (T *)arena_push_ex(arena, sizeof(T) * (count), align_of(T))
 
 //
 // State tracking
