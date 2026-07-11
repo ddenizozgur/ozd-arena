@@ -15,7 +15,6 @@ char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
     return nullptr;
   }
 
-  // Take a snapshot of the arena's current state.
   auto arena_state = arena_temp_begin(arena);
 
   size_t needed_bytes = bytes + 1ull;
@@ -28,8 +27,6 @@ char *cstr_fmtva(Arena *arena, const char *fmt, va_list args) {
   int len = vsnprintf(ptr, needed_bytes, fmt, copy_args);
   va_end(copy_args);
 
-  // If the operation fails after we pushed memory, we restore the arena
-  // to the saved state, reverting the allocation.
   if (len < 0) {
     arena_temp_end(arena_state);
 
@@ -49,7 +46,6 @@ char *cstr_fmt(Arena *arena, const char *fmt, ...) {
 }
 
 void println_fmt(const char *fmt, ...) {
-  // Grab the current thread's scratch arena.
   auto scratch = scratch_begin();
 
   va_list args;
@@ -60,14 +56,13 @@ void println_fmt(const char *fmt, ...) {
 
   puts(ptr);
 
-  // Frees all memory pushed during this scratch block.
   scratch_end(scratch);
 }
 
 // This is not the best example but..
 char *_remove_spaces0(Arena *arena, Arena *scratch, const char *input) {
   // Takes two arenas. While 'scratch' arena handles intermediate allocations,
-  // 'arena' holds the final contiguous result.
+  // 'arena' holds the final result.
 
   size_t max_len = strlen(input);
   char *tmp = arena_push<char>(scratch, max_len + 1);
@@ -107,21 +102,19 @@ char *remove_spaces(Arena *arena, const char *input) {
 
 int main() {
   // Reserve a contiguous block of virtual address space (64 GB) upfront.
-  // The OS will commit memory in small chunks (8 KB) as we push.
+  // The OS will commit memory in chunks (8 KB) as we push.
   auto arena = arena_init(gigabytes(64), kilobytes(8));
 
-  // This string lives as long as 'arena' lives.
   const char *cstr = cstr_fmt(&arena, "This is a test: \t%d", 46);
   puts(cstr);
 
   const char *space_free = remove_spaces(&arena, " Some Test\tV2\n! ");
-  puts(space_free); // puts() adds newline
+  puts(space_free);
 
   arena_free(&arena);
 
   println_fmt("This is a test 2: \t%s", "testinator");
 
-  // Release the thread-local scratch arena back to the OS before thread exit.
   scratch_free();
   return 0;
 }

@@ -22,7 +22,6 @@ arena_init(size_t reserve_size = ARENA_DEFAULT_RESERVE_SIZE,
   reserve_size = align_forward_pow2(reserve_size,
                                     os_win32_sysinfo.dwAllocationGranularity);
 #elif IS_OS_LINUX
-  // linux can reserve 4KiB smallest, basically pagesize
   reserve_size = align_forward_pow2(reserve_size, os_pagesize);
 #endif
 
@@ -96,9 +95,6 @@ template <typename T> inline T *arena_push(Arena *arena, size_t count = 1) {
 //   arena_pop_by(arena, sizeof(T) * count);
 // }
 
-//
-// State tracking
-//
 struct Arena_Temp {
   Arena *arena;
   size_t pos;

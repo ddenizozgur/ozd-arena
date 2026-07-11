@@ -21,7 +21,6 @@ static inline Arena arena_init_ex(size_t reserve_size, size_t per_commit_size) {
   reserve_size = align_forward_pow2(reserve_size,
                                     os_win32_sysinfo.dwAllocationGranularity);
 #elif IS_OS_LINUX
-  // linux can reserve 4KiB smallest, basically pagesize
   reserve_size = align_forward_pow2(reserve_size, os_pagesize);
 #endif
 
@@ -96,9 +95,6 @@ static inline void arena_free(Arena *arena) {
 #define arena_push(arena, T, count)                                            \
   (T *)arena_push_ex(arena, sizeof(T) * (count), align_of(T))
 
-//
-// State tracking
-//
 typedef struct Arena_Temp Arena_Temp;
 struct Arena_Temp {
   Arena *arena;
